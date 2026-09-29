@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>目标检测测评汇总</title>
+<style>
+  :root {
+    --ink: #1c1915;
+    --muted: #5e574e;
+    --paper: #f4efe6;
+    --card: #fffdf8;
+    --line: #e3d9c8;
+    --green: #0e6b52;
+    --green-soft: #e5f4ee;
+    --amber: #8a4b12;
+    --amber-soft: #f8efe4;
+    --zero: #6f675e;
+    --bar: #1f7a62;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #efe4cf 0%, transparent 55%),
+      var(--paper);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.65;
+    font-size: 16.5px;
+  }
+  a { color: var(--green); }
+  header {
+    padding: 56px 24px 28px;
+  }
+  main, header, footer {
+    width: min(980px, calc(100% - 32px));
+    margin: 0 auto;
+  }
+  .kicker {
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 700;
+  }
+  h1 {
+    font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.2;
+    font-weight: 600;
+    margin: 8px 0 12px;
+  }
+  .lead {
+    font-size: 18px;
+    max-width: 42em;
+    margin: 0;
+  }
+  .meta {
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin: 8px auto 28px;
+    width: min(980px, calc(100% - 32px));
+  }
+  nav a {
+    text-decoration: none;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 14px;
+  }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 28px 28px 22px;
+    margin-bottom: 18px;
+  }
+  h2 {
+    font-family: "Songti SC", "Noto Serif SC", serif;
+    font-size: 26px;
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  h3 {
+    font-size: 18px;
+    margin: 22px 0 8px;
+  }
+  p { margin: 0 0 12px; }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .card {
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+    background: var(--green-soft);
+  }
+  .card.flat { background: var(--amber-soft); }
+  .card .num {
+    font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  .card .label { color: var(--muted); font-size: 14px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    font-size: 14.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-weight: 650;
+  }
+  td.num, th.num { text-align: right; }
+  tr.up td.delta { color: var(--green); font-weight: 700; }
+  tr.flat td.delta { color: var(--zero); font-weight: 700; }
+  .bar {
+    height: 8px;
+    background: #efe7da;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .bar > span {
+    display: block;
+    height: 100%;
+    background: var(--bar);
+    border-radius: 99px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    border-radius: 999px;
+    padding: 1px 8px;
+    background: var(--green-soft);
+    color: var(--green);
+    margin-right: 6px;
+  }
+  .tag.warn { background: var(--amber-soft); color: var(--amber); }
+  .tag.muted { background: #f0ebe3; color: var(--zero); }
+  ul { margin: 8px 0 12px; padding-left: 1.2em; }
+  li { margin: 4px 0; }
+  .dataset {
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+  .dataset:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+  .scoreline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-variant-numeric: tabular-nums;
+    margin: 6px 0 8px;
+  }
+  .scoreline b { font-size: 18px; }
+  footer {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 8px 0 48px;
+  }
+  @media (max-width: 720px) {
+    section { padding: 20px 16px 14px; }
+    .cards { grid-template-columns: 1fr; }
+    table { font-size: 13px; }
+  }
+  @media print {
+    body { background: white; }
+    section { break-inside: avoid; }
+    nav { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">Object detection · RSI</div>
+  <h1>目标检测测评汇总</h1>
+  <p class="lead">检测器权重全程冻结，没有训练。只改送进网络之前的图像处理，以及网络给出框之后怎么保留。同一套官方划分上，基线和优化后各评一次。</p>
+  <p class="meta">检测器：torchvision Faster R-CNN ResNet50-FPN，COCO 预训练权重。汇总日期：2026年9月29日。</p>
+</header>
+<nav>
+  <a href="#result">分数</a>
+  <a href="#how">怎么做的</a>
+  <a href="#each">每个数据集</a>
+  <a href="#zero">分数为 0 的</a>
+  <a href="#pending">还没跑的</a>
+  <a href="#end">结论</a>
+</nav>
+<main>
+  <section id="result">
+    <h2>官方划分上的分数</h2>
+    <p>下表是各数据集规定的核心指标。基线和优化后用的是同一次实验、同一套类别对照。小数保留 4 位。</p>
+    <div class="cards">
+      <div class="card">
+        <div class="label">涨幅最大 · COCO mAP@[0.5:0.95]</div>
+        <div class="num">+0.0165</div>
+        <div>0.3688 → 0.3852</div>
+      </div>
+      <div class="card">
+        <div class="label">VOC 2007 test · mAP@0.5</div>
+        <div class="num">+0.0131</div>
+        <div>0.8282 → 0.8413</div>
+      </div>
+      <div class="card flat">
+        <div class="label">类别对不上时</div>
+        <div class="num">0</div>
+        <div>交通标志、无人机没有对应类别</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto; margin-top:18px;">
+    <table>
+      <thead>
+        <tr>
+          <th>数据集</th>
+          <th>划分</th>
+          <th>指标</th>
+          <th class="num">基线</th>
+          <th class="num">优化后</th>
+          <th class="num">差值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="up">
+          <td>Pascal VOC</td>
+          <td>2007 test，4952 张</td>
+          <td>mAP@0.5</td>
+          <td class="num">0.8282</td>
+          <td class="num">0.8413</td>
+          <td class="num delta">+0.0131</td>
+        </tr>
+        <tr class="up">
+          <td>MS COCO 2017</td>
+          <td>val2017，5000 张</td>
+          <td>mAP@[0.5:0.95]</td>
+          <td class="num">0.3688</td>
+          <td class="num">0.3852</td>
+          <td class="num delta">+0.0165</td>
+        </tr>
+        <tr class="up">
+          <td>MS COCO 2017</td>
+          <td>val2017，5000 张</td>
+          <td>mAP@0.5</td>
+          <td class="num">0.5847</td>
+          <td class="num">0.6049</td>
+          <td class="num delta">+0.0202</td>
+        </tr>
+        <tr class="up">
+          <td>VisDrone</td>
+          <td>test-dev，1610 张</td>
+          <td>mAP@[0.5:0.95]</td>
+          <td class="num">0.0327</td>
+          <td class="num">0.0408</td>
+          <td class="num delta">+0.0081</td>
+        </tr>
+        <tr class="up">
+          <td>DOTA-v2</td>
+          <td>官方 val，593 张</td>
+          <td>旋转框 mAP</td>
+          <td class="num">0.0106</td>
+          <td class="num">0.0156</td>
+          <td class="num delta">+0.0050</td>
+        </tr>
+        <tr class="flat">
+          <td>OpenImages</td>
+          <td>验证集，34413 张</td>
+          <td>mAP@0.5</td>
+          <td class="num">0.0458</td>
+          <td class="num">0.0458</td>
+          <td class="num delta">+0.0000</td>
+        </tr>
+        <tr class="up">
+          <td>Objects365</td>
+          <td>官方 val，80000 张</td>
+          <td>mAP@[0.5:0.95]</td>
+          <td class="num">0.0492</td>
+          <td class="num">0.0514</td>
+          <td class="num delta">+0.0023</td>
+        </tr>
+        <tr class="flat">
+          <td>TT100K</td>
+          <td>官方 test</td>
+          <td>mAP@0.5</td>
+          <td class="num">0.0000</td>
+          <td class="num">0.0000</td>
+          <td class="num delta">0</td>
+        </tr>
+        <tr class="flat">
+          <td>Anti-UAV300</td>
+          <td>可见光 test</td>
+          <td>mAP@0.5</td>
+          <td class="num">0.0000</td>
+          <td class="num">0.0000</td>
+          <td class="num delta">0</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="margin-top:14px; color:var(--muted); font-size:14px;">OpenImages 的精确差值是 +0.00004，四舍五入后两边都是 0.0458。VisDrone 相对自己的基线大约提高了四分之一，绝对分仍然是 0.0408。DOTA 相对基线大约提高一半，绝对分是 0.0156。</p>
+  </section>
+
+  <section id="how">
+    <h2>实验在做什么</h2>
+    <p>把冻结的检测器当成固定的识别器。它只能输出 COCO 里那 80 类的框。搜索的时候，每一版只改一件事：要么改一个数字，要么在图像处理或框筛选里加一步新的处理。子集上先比较，留下更好的版本，最后在官方划分上评一次。</p>
+    <h3>基线</h3>
+    <p>基线是没改过的默认设置：亮度 1、对比度 1、图像短边 800、长边 1333、分数门槛 0.05、重叠框抑制阈值 0.5。标注只用来算分，不参与改检测器。</p>
+    <h3>输入和输出</h3>
+    <ul>
+      <li>输入：该数据集官方划分里的彩色图片，像素缩放到 0 到 1。</li>
+      <li>中间输出：每个框的位置、类别名、置信度。</li>
+      <li>最终输出：上表里的官方指标。对不上名字的类别按 0 分计入平均，不从平均里删掉。</li>
+    </ul>
+    <h3>允许对齐的名字</h3>
+    <p>同一种东西的不同英文写法可以对上，例如 cell phone 和 mobile phone、dining table 和 dinning table。飞机不能改叫无人机，交通标志的编号也不能改成 COCO 里的类名。</p>
+    <h3>搜索做到哪一步</h3>
+    <ul>
+      <li>VOC 搜了 20 轮，再在 2007 test 上评一次。</li>
+      <li>COCO 在子集上搜到第 14 轮后，用当时最好的版本评完整 val2017。</li>
+      <li>VisDrone、DOTA、Objects365 各搜了 3 轮，OpenImages 搜了 2 轮，然后各评一次完整官方划分。</li>
+    </ul>
+  </section>
+
+  <section id="each">
+    <h2>每个数据集最后留下的改动</h2>
+
+    <div class="dataset">
+      <h3>Pascal VOC <span class="tag">+0.0131</span></h3>
+      <div class="scoreline"><span>基线 <b>0.8282</b></span><span>优化后 <b>0.8413</b></span><span>mAP@0.5 · 2007 test</span></div>
+      <p>20 个类都能对上 COCO 的名字，所以分数本来就高，优化是在这个高分上再抬一点。子集上曾到过 0.8527，报出的数是完整测试集的 0.8413。</p>
+      <ul>
+        <li>图像短边改为 640，长边仍是 1333。</li>
+        <li>分数门槛从 0.05 降到 0.02。</li>
+        <li>原图检一次，左右翻转再检一次，框翻回原图坐标后合并。</li>
+        <li>重叠框用软抑制，这一步把 NMS 阈值设为 0.9，再按分数把重叠框压低。</li>
+        <li>用更大尺度再检一次，只把面积小于 96×96 的小框并进来。</li>
+        <li>靠得很近、类别相同的框，按分数加权合成一个框。</li>
+        <li>每张图最多保留 300 个框。</li>
+        <li>丢掉短边小于 8 像素的框。</li>
+      </ul>
+    </div>
+
+    <div class="dataset">
+      <h3>MS COCO 2017 <span class="tag">+0.0165 / +0.0202</span></h3>
+      <div class="scoreline">
+        <span>mAP@[0.5:0.95] <b>0.3688 → 0.3852</b></span>
+        <span>mAP@0.5 <b>0.5847 → 0.6049</b></span>
+      </div>
+      <p>检测器就是用 COCO 训练的，类别完全对得上。涨幅主要来自多看一次小目标、翻转再检一次，以及把更多低分框留下来。</p>
+      <ul>
+        <li>图像短边改为 640。</li>
+        <li>分数门槛降到 0.02，重叠框阈值仍是 0.5。</li>
+        <li>更大尺度上只补小框，左右翻转再检一次，相近框按分数加权合并。</li>
+      </ul>
+    </div>
+
+    <div class="dataset">
+      <h3>VisDrone <span class="tag">+0.0081</span></h3>
+      <div class="scoreline"><span>基线 <b>0.0327</b></span><span>优化后 <b>0.0408</b></span><span>mAP@[0.5:0.95] · test-dev</span></div>
+      <p>航拍图里人和车很小、很密。能对上的是行人、自行车、小汽车、卡车、公交、摩托车。人群、厢式车、三轮车对不上，这几类按 0 分算进 10 类平均。选择在验证集上做，报出的数是 test-dev 的 1610 张。</p>
+      <ul>
+        <li>短边保持 800。</li>
+        <li>分数门槛降到 0.02，每张图最多留 300 个框。</li>
+        <li>更大尺度上只补小框。</li>
+      </ul>
+    </div>
+
+    <div class="dataset">
+      <h3>DOTA-v2 <span class="tag">+0.0050</span></h3>
+      <div class="scoreline"><span>基线 <b>0.0106</b></span><span>优化后 <b>0.0156</b></span><span>旋转框 mAP · 官方 val 593 张</span></div>
+      <p>测试集标注不公开，所以用官方验证集。大图切成 1024 的块再拼回去。水平框转成四点框，按旋转框 IoU 0.5 算 18 类平均。飞机对上 plane，船对上 ship，卡车和公交对上 large-vehicle，小汽车对上 small-vehicle。其余类别按 0 分计入。</p>
+      <ul>
+        <li>分数门槛降到 0.02。</li>
+        <li>图像短边放到 1200，长边仍是 1333。</li>
+        <li>更大尺度上只补小框。</li>
+      </ul>
+    </div>
+
+    <div class="dataset">
+      <h3>OpenImages <span class="tag warn">几乎没变</span></h3>
+      <div class="scoreline"><span>基线 <b>0.0458</b></span><span>优化后 <b>0.0458</b></span><span>mAP@0.5 · 验证集 34413 张</span></div>
+      <p>用的是能下载到的 v5 验证集框标注。成组标注不当成单个物体。最后只把分数门槛降到 0.02，没有加新的处理步骤。大量细类和部件类对不上 COCO，平均分被这些 0 分拉低，这一处改动没有再抬高总分。</p>
+    </div>
+
+    <div class="dataset">
+      <h3>Objects365 <span class="tag">+0.0023</span></h3>
+      <div class="scoreline"><span>基线 <b>0.0492</b></span><span>优化后 <b>0.0514</b></span><span>mAP@[0.5:0.95] · 官方 val 80000 张</span></div>
+      <p>365 类里只有一部分能对上 COCO。同一种东西的别名，例如餐桌、电视、吹风机、手提包，基线和优化后用的是同一张对照表，所以这 0.0023 是搜索本身带来的，不是改名字带来的。</p>
+      <ul>
+        <li>短边保持 800。</li>
+        <li>分数门槛降到 0.02，每张图最多留 300 个框。</li>
+        <li>更大尺度上只补小框。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="zero">
+    <h2>分数是 0 的两项</h2>
+    <div class="dataset">
+      <h3>TT100K <span class="tag muted">0.0000</span></h3>
+      <p>官方测试集有 221 种交通标志。冻结检测器的类别名单里没有这些标志代码，名字一个都对不上。框不会被改标成标志，所以 mAP@0.5 是 0。</p>
+    </div>
+    <div class="dataset">
+      <h3>Anti-UAV300 <span class="tag muted">0.0000</span></h3>
+      <p>要检的是无人机。检测器没有 drone、uav 这些类。飞机仍然叫飞机，不会改叫无人机。可见光测试集上 mAP@0.5 和召回都是 0。</p>
+    </div>
+  </section>
+
+  <section id="pending">
+    <h2>还没跑的</h2>
+    <ul>
+      <li><b>Cityscapes</b>：指标是 8 个实例类上的 mAP@[0.5:0.95]（person、rider、car、truck、bus、train、motorcycle、bicycle）。测试集标注不公开，准备用官方验证集。图片和精细标注还没到服务器上，所以没有分数。rider 不会当成 person。</li>
+      <li><b>TinyPerson、BDD100K</b>：服务器上没有可用的官方数据包，没有跑。</li>
+    </ul>
+  </section>
+
+  <section id="end">
+    <h2>结论</h2>
+    <p>不训练网络，只改图像怎么送进去、框怎么留下来，能在检测器本来就会认的类别上把分数抬高。COCO 和 VOC 抬得最清楚，因为类别本来就对得上。</p>
+    <p>航拍和遥感图上，放大、多留框、专门补小目标，相对自己的基线有提高，绝对分仍然很低。</p>
+    <p>数据集里大量类别名字对不上时，这些类按 0 分进入平均。搜索改不了这件事。交通标志和无人机就是这种情况，结果保持为 0。</p>
+    <div class="bar" title="COCO mAP 差值相对本表最大涨幅"><span style="width:100%"></span></div>
+    <p style="font-size:13px; color:var(--muted);">上表差值从大到小：COCO 的 mAP@0.5（+0.0202）、COCO 的 mAP@[0.5:0.95]（+0.0165）、VOC（+0.0131）、VisDrone（+0.0081）、DOTA（+0.0050）、Objects365（+0.0023）、OpenImages（约 0）。</p>
+  </section>
+</main>
+<footer>
+  分数来自各数据集 versions_logic 里最终版本的官方评测记录。检测器没有更新权重，评测划分和指标定义没有改。
+</footer>
+</body>
+</html>
