@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>目标检测的统一 RSI 系统</title>
+<style>
+  body { margin: 0; background: #f7f5f2; color: #1c1915;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.75; }
+  main { width: min(760px, calc(100% - 40px)); margin: 48px auto 80px; }
+  h1 { font-size: 28px; line-height: 1.35; font-weight: 650; margin: 0 0 12px; }
+  h2 { font-size: 18px; margin: 36px 0 10px; }
+  p { margin: 0 0 12px; }
+  ol { margin: 0; padding-left: 1.2em; }
+  li { margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 15px; }
+  th, td { border-bottom: 1px solid #e4ddd2; padding: 10px 8px; text-align: left; vertical-align: top; }
+  th { color: #6b645c; font-weight: 600; font-size: 13px; }
+  .lead { font-size: 18px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<main>
+  <h1>目标检测用一套 RSI 系统</h1>
+  <p class="lead">十一个数据集共用这一套。给出数据集名字，系统返回三件事：数据怎么读成统一格式、图像怎么处理、检测框怎么筛选。检测器是冻结的，不训练。</p>
+
+  <h2>固定不变的三件事</h2>
+  <ol>
+    <li><b>契约。</b>一张彩色图进去，一组带类别的框出来。每个框还有一个置信度。</li>
+    <li><b>指标。</b>都是按框的重叠配对，按类算平均精度，再对类取平均。每个数据集只选下面三个开关。</li>
+    <li><b>encoder 和 decoder。</b>图像处理和框的筛选用同一套步骤。每个数据集只改参数，以及选用其中哪几步。</li>
+  </ol>
+
+  <h2>三个开关</h2>
+  <table>
+    <thead><tr><th>开关</th><th>各数据集怎么选</th></tr></thead>
+    <tbody>
+      <tr><td>框</td><td>水平框。DOTA 用四个角点</td></tr>
+      <tr><td>重叠阈值</td><td>只取 0.5，或从 0.5 取到 0.95 再平均</td></tr>
+      <tr><td>召回率</td><td>只有 Anti-UAV 额外报</td></tr>
+    </tbody>
+  </table>
+  <p>文件是 XML、JSON 还是文本，由适配器转成上面这种框。新数据集只加适配器，不改这三件事，也不新造类别对照。</p>
+
+  <h2>十一个数据集</h2>
+  <table>
+    <thead><tr><th>数据集</th><th>对外报的数</th><th>现在的选择</th><th>状态</th></tr></thead>
+    <tbody>
+    <tr><td>Pascal VOC</td><td>mAP@0.5</td><td>输入最短边 640，分数门槛 0.02，每张图最多留 300 个框，左右翻转再检一次，重叠框按程度降分，小目标放大再检一次，重叠框合并，去掉过小的框</td><td>能评测</td></tr>
+<tr><td>MS COCO</td><td>mAP@[0.5:0.95]</td><td>输入最短边 640，分数门槛 0.02，小目标放大再检一次，左右翻转再检一次，重叠框合并</td><td>能评测</td></tr>
+<tr><td>Objects365</td><td>mAP@[0.5:0.95]</td><td>分数门槛 0.02，每张图最多留 300 个框，小目标放大再检一次</td><td>能评测</td></tr>
+<tr><td>VisDrone</td><td>mAP@[0.5:0.95]</td><td>分数门槛 0.02，每张图最多留 300 个框，小目标放大再检一次</td><td>能评测</td></tr>
+<tr><td>DOTA</td><td>旋转框 mAP</td><td>输入最短边 1200，分数门槛 0.02，小目标放大再检一次</td><td>能评测</td></tr>
+<tr><td>OpenImages</td><td>mAP@0.5</td><td>分数门槛 0.02</td><td>能评测</td></tr>
+<tr><td>TT100K</td><td>mAP@0.5</td><td>公共基线</td><td>能评测</td></tr>
+<tr><td>Anti-UAV</td><td>mAP@0.5，以及 Recall</td><td>公共基线</td><td>能评测</td></tr>
+<tr><td>TinyPerson</td><td>mAP@0.5</td><td>公共基线</td><td>等数据</td></tr>
+<tr><td>BDD100K</td><td>mAP@0.5</td><td>公共基线</td><td>等数据</td></tr>
+<tr><td>Cityscapes</td><td>mAP@[0.5:0.95]</td><td>公共基线</td><td>等数据</td></tr>
+    </tbody>
+  </table>
+  <p>TT100K 和 Anti-UAV 用公共基线。交通标志代码、无人机这些名字和检测器对不上，对不上的类按 0 分计入平均。</p>
+  <p>TinyPerson、BDD100K、Cityscapes 已经挂在同一份契约上。图片还没到，所以先不评。</p>
+</main>
+</body>
+</html>
