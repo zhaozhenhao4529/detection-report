@@ -7,13 +7,14 @@
 <style>
   body { margin: 0; background: #f7f5f2; color: #1c1915;
     font-family: "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.75; }
-  main { width: min(760px, calc(100% - 40px)); margin: 48px auto 80px; }
+  main { width: min(880px, calc(100% - 40px)); margin: 48px auto 80px; }
   h1 { font-size: 28px; line-height: 1.35; font-weight: 650; margin: 0 0 12px; }
-  h2 { font-size: 18px; margin: 36px 0 10px; }
+  h2 { font-size: 20px; margin: 40px 0 10px; }
+  h3 { font-size: 16px; margin: 22px 0 8px; }
   p { margin: 0 0 12px; }
-  ol { margin: 0; padding-left: 1.2em; }
-  li { margin: 0 0 10px; }
-  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 15px; }
+  ol, ul { margin: 0 0 12px; padding-left: 1.25em; }
+  li { margin: 0 0 8px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; margin: 8px 0 14px; }
   th, td { border-bottom: 1px solid #e4ddd2; padding: 10px 8px; text-align: left; vertical-align: top; }
   th { color: #6b645c; font-weight: 600; font-size: 13px; }
   .lead { font-size: 18px; line-height: 1.7; }
@@ -21,28 +22,30 @@
 </head>
 <body>
 <main>
-  <h1>目标检测用一套 RSI 系统</h1>
-  <p class="lead">十一个数据集共用这一套。给出数据集名字，系统返回三件事：数据怎么读成统一格式、图像怎么处理、检测框怎么筛选。检测器是冻结的，不训练。</p>
+  <h1>目标检测：统一模板和 RSI 循环</h1>
+  <p class="lead">十一个目标检测数据集收成一套系统。检测器保持冻结，不训练。涨分来自图像怎么送进去、检测框怎么留下来。选择在子集上做，每个数据集的官方划分只用来报一次分。</p>
 
-  <h2>固定不变的三件事</h2>
+  <h2>结论</h2>
   <ol>
-    <li><b>契约。</b>一张彩色图进去，一组带类别的框出来。每个框还有一个置信度。</li>
-    <li><b>指标。</b>都是按框的重叠配对，按类算平均精度，再对类取平均。每个数据集只选下面三个开关。</li>
-    <li><b>encoder 和 decoder。</b>图像处理和框的筛选用同一套步骤。每个数据集只改参数，以及选用其中哪几步。</li>
+    <li><b>输入和输出能统一。</b>都是一张彩色图进去，一组带类别的框出来。XML、JSON、文本、比例坐标由适配器转换。</li>
+    <li><b>核心指标能统一。</b>都是按重叠配对，按类算平均精度，再对类取平均。只留三个开关：水平框或旋转框；重叠只取 0.5，或从 0.5 取到 0.95 再平均；要不要额外报召回率。</li>
+    <li><b>搜索循环是同一套。</b>冻结检测器，版本树上每次只改 encoder 或 decoder 的一处，用主指标和最差类一起决定留下谁。</li>
   </ol>
 
-  <h2>三个开关</h2>
+  <h2>统一模板</h2>
+  <p><b>输入</b>是一张彩色图，像素缩放到 0 到 1。<b>输出</b>是若干物体，每个物体有类别、一个框、一个置信度。框默认是左上角和右下角。DOTA 保留四个角点。</p>
   <table>
-    <thead><tr><th>开关</th><th>各数据集怎么选</th></tr></thead>
+    <thead><tr><th>开关</th><th>怎么选</th></tr></thead>
     <tbody>
-      <tr><td>框</td><td>水平框。DOTA 用四个角点</td></tr>
-      <tr><td>重叠阈值</td><td>只取 0.5，或从 0.5 取到 0.95 再平均</td></tr>
-      <tr><td>召回率</td><td>只有 Anti-UAV 额外报</td></tr>
+      <tr><td>框</td><td>水平框。DOTA 用四个角点，评测时算旋转框重叠</td></tr>
+      <tr><td>重叠阈值</td><td>只取 0.5，或从 0.5 取到 0.95 再平均。两档来自同一次评测</td></tr>
+      <tr><td>召回率</td><td>默认不报。Anti-UAV 在同一次配对上额外报</td></tr>
     </tbody>
   </table>
-  <p>文件是 XML、JSON 还是文本，由适配器转成上面这种框。新数据集只加适配器，不改这三件事，也不新造类别对照。</p>
+  <p>对外仍报各数据集自己规定的那一档。COCO 报 mAP@[0.5:0.95]，VOC 报 mAP@0.5，DOTA 报旋转框。</p>
+  <p>类别只允许同一种东西的不同写法，例如 airplane 对到 aeroplane，cell phone 对到 mobile phone。对不上的类按 0 分留在平均里。飞机不改叫无人机，人不改叫骑行者，车不改叫厢式车。</p>
 
-  <h2>十一个数据集</h2>
+  <h2>十一个数据集落在哪</h2>
   <table>
     <thead><tr><th>数据集</th><th>对外报的数</th><th>现在的选择</th><th>状态</th></tr></thead>
     <tbody>
@@ -59,8 +62,82 @@
 <tr><td>Cityscapes</td><td>mAP@[0.5:0.95]</td><td>公共基线</td><td>等数据</td></tr>
     </tbody>
   </table>
-  <p>TT100K 和 Anti-UAV 用公共基线。交通标志代码、无人机这些名字和检测器对不上，对不上的类按 0 分计入平均。</p>
-  <p>TinyPerson、BDD100K、Cityscapes 已经挂在同一份契约上。图片还没到，所以先不评。</p>
+  <p>公共基线是：输入最短边 800、最长边 1333，分数门槛 0.05，每张图最多留 100 个框，不再加额外步骤。</p>
+
+  <h2>实验设置</h2>
+  <p>检测器是 torchvision 的 Faster R-CNN ResNet50-FPN，权重用 COCO 预训练。模型设为评估状态，全部参数 <code>requires_grad = False</code>。没有优化器，没有反向传播。</p>
+  <p>允许改的只有两份代码：encoder 在图像进检测器之前处理亮度、对比度和尺寸；decoder 在框出来之后决定分数门槛、重叠框怎么留、要不要再检一次。检测器权重、数据集划分、类别集合、官方指标定义都不改。</p>
+  <table>
+    <thead><tr><th>数据集</th><th>用来选择的子集</th><th>对外报分的划分</th></tr></thead>
+    <tbody>
+      <tr><td>Pascal VOC</td><td>2012 trainval 中 200 张筛选，800 张再确认</td><td>2007 test，4952 张，只评一次</td></tr>
+      <tr><td>MS COCO</td><td>val2017 中 200 张筛选，800 张再确认</td><td>完整 val2017，5000 张。测试集标注不公开</td></tr>
+      <tr><td>VisDrone</td><td>官方 val 上最多 3 轮，200 张筛选</td><td>test-dev，1610 张</td></tr>
+      <tr><td>DOTA-v2</td><td>val 中 40 张筛选，120 张再确认</td><td>官方 val 全部 593 张。测试集标注不公开。大图按 1024 切块再拼回原图坐标</td></tr>
+      <tr><td>OpenImages</td><td>v5 验证集中 200 张筛选，600 张再确认</td><td>v5 验证集 34413 张。任务表写 V7，v6 标注下载返回 403。成组框不当成一个物体</td></tr>
+      <tr><td>Objects365</td><td>val 中 200 张筛选，600 张再确认</td><td>官方 val，80000 张</td></tr>
+      <tr><td>TT100K</td><td>没有搜到可用的类别对照</td><td>官方 test。221 种标志代码和检测器类别没有重合</td></tr>
+      <tr><td>Anti-UAV</td><td>用公共基线</td><td>可见光 test。检测器里没有无人机这个类</td></tr>
+    </tbody>
+  </table>
+  <p>TinyPerson、BDD100K、Cityscapes 已经按同一份契约登记。图片还没到服务器，所以没有分数。</p>
+
+  <h2>结果</h2>
+  <p>下表是官方划分上的数，保留四位小数。基线是同一套冻结检测器、公共 encoder 和 decoder。选定版本是子集上留下的那一版。</p>
+  <table>
+    <thead><tr><th>数据集</th><th>指标</th><th>基线</th><th>选定版本</th><th>版本</th></tr></thead>
+    <tbody>
+      <tr><td>Pascal VOC</td><td>mAP@0.5</td><td>0.8282</td><td>0.8413</td><td>n0096</td></tr>
+      <tr><td>MS COCO</td><td>mAP@[0.5:0.95]</td><td>0.3688</td><td>0.3852</td><td>n0036</td></tr>
+      <tr><td>MS COCO</td><td>mAP@0.5</td><td>0.5847</td><td>0.6049</td><td>n0036</td></tr>
+      <tr><td>VisDrone</td><td>mAP@[0.5:0.95]</td><td>0.0327</td><td>0.0408</td><td>n0005</td></tr>
+      <tr><td>DOTA-v2</td><td>旋转框 mAP</td><td>0.0106</td><td>0.0156</td><td>n0006</td></tr>
+      <tr><td>OpenImages</td><td>mAP@0.5</td><td>0.0458</td><td>0.0458</td><td>n0004</td></tr>
+      <tr><td>Objects365</td><td>mAP@[0.5:0.95]</td><td>0.0492</td><td>0.0514</td><td>n0005</td></tr>
+      <tr><td>TT100K</td><td>mAP@0.5</td><td>0</td><td>0</td><td>公共基线</td></tr>
+      <tr><td>Anti-UAV</td><td>mAP@0.5，Recall</td><td>0，0</td><td>0，0</td><td>公共基线</td></tr>
+    </tbody>
+  </table>
+  <p>VOC 的 0.8413 在全部 4952 张上又核过一次。最差类的 AP 从 0.5646 到 0.5707。OpenImages 四舍五入后基线和选定版都是 0.0458。TT100K 和 Anti-UAV 是 0，因为类别对不上，这些类按 0 分留在平均里。</p>
+
+  <h2>循环系统有哪些部分</h2>
+  <ol>
+    <li><b>冻结检测器。</b>负责从图像里出框。权重不改。</li>
+    <li><b>encoder。</b>图像进检测器之前。可调最短边、最长边、亮度、对比度，也可以插入伽马、锐化、白平衡、局部对比这几步。</li>
+    <li><b>decoder。</b>框出来之后。可调分数门槛、重叠阈值、每张图留多少框，也可以插入翻转再检、小目标再检、重叠框降分、框合并、丢掉过小的框。</li>
+    <li><b>适配器。</b>把某个数据集的文件和类别名转成统一的框。新数据集只加适配器。</li>
+    <li><b>版本树。</b>每个节点只保存当时的 encoder.py 和 decoder.py，并记下父节点、改了哪一处、为什么改。</li>
+    <li><b>提案。</b>看当前版本哪一类差，从还没用过的改动里挑。每个父节点最多生两个孩子。</li>
+    <li><b>筛选和确认。</b>孩子先在小子集上算，名次靠前的再在大一点的子集上算。</li>
+    <li><b>保留。</b>主指标和最差类一起看。一个版本只有在两项上都不差、并且至少一项更好时，才算压过另一个。留下的父节点最多 3 个。</li>
+    <li><b>官方评测。</b>子集上选中的版本和基线，在官方划分上各跑一次。这一次的数才写入上表。</li>
+  </ol>
+
+  <h2>一轮是怎么走的</h2>
+  <ol>
+    <li>从当前留下的父节点出发，最多取 3 个。</li>
+    <li>每个父节点生成最多 2 个子版本。每个子版本只改一处：要么改一个常数，要么插入一个处理步骤。两个孩子尽量一个落在 encoder、一个落在 decoder，并且一个改步骤、一个改参数。</li>
+    <li>祖先用过的改动不再提案，已经生出来又没留下的改动也不再从新父节点重提。</li>
+    <li>所有孩子先在筛选子集上评测。</li>
+    <li>筛选里最好的 2 个，再在确认子集上评测。</li>
+    <li>父节点和这 2 个孩子放在一起，按主指标和最差类做保留，留下最多 3 个，作为下一轮的父节点。</li>
+    <li>主指标比上一轮最好成绩有提升，连续无提升的计数清零；没有提升就加一。VOC 和 COCO 的搜索上限是 20 轮，连续 8 轮没有提升就停。VisDrone、DOTA、OpenImages、Objects365 最多 3 轮，连续 2 轮没有提升就停。</li>
+    <li>停下来之后，在留下的版本里取主指标最高的一个，和基线一起到官方划分上评一次。官方划分不参与前面的挑选。</li>
+  </ol>
+  <p>实际跑下来：VOC 走满 20 轮，确认子集上选中 n0096，再到 2007 test。COCO 的子集搜索进行到后面时，用当时确认子集上最好的 n0036，到完整 val2017 上报分。VisDrone 选中 n0005，DOTA 选中 n0006，OpenImages 选中 n0004，Objects365 选中 n0005。</p>
+  <p>VOC 的选择划分是 2012 trainval，报分划分是 2007 test，两套分开。COCO、DOTA、OpenImages、Objects365 的测试集标注拿不到或官方就用验证集，所以选择子集和最终分数来自同一个官方验证集；最终分数仍是完整验证集只评一次，选择时只用了其中一部分。</p>
+
+  <h2>这样做的好处</h2>
+  <ul>
+    <li>涨分能对上具体的一处改动。每个孩子只有一个差异，父节点记在版本树上。</li>
+    <li>检测器不训练，权重和连接都不改。同一颗冻结的检测器可以接到多个数据集。</li>
+    <li>挑选用子集，官方划分只碰一次，避免在报分的那一套图上反复试版本。</li>
+    <li>同时看主指标和最差类。平均分上去、最难的类掉下去的版本不会单独留下来。</li>
+    <li>文件格式和指标档位放在适配器里。新的检测数据集接到同一份契约，不用重写搜索循环。</li>
+  </ul>
+
+  <h2>边界</h2>
+  <p>这页只覆盖目标检测。TT100K 和 Anti-UAV 说明：冻结的 COCO 检测器没有对应类别时，循环改的是图像和框，不会把没有的类变出来，分数保持为 0。OpenImages 上选定版和基线在四位小数上相同。TinyPerson、BDD100K、Cityscapes 还缺数据，契约里有位置，没有跑分。</p>
 </main>
 </body>
 </html>
